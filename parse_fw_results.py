@@ -2,10 +2,10 @@ import array
 import sys
 import ROOT
 
-input_filename = "results_nominal_0000_9999_2016_05_26.txt"
+input_filename = "data_text/results_nominal_0000_9999_2016_05_26.txt"
 lines = open(input_filename).readlines()
 
-output_filename = "ntuple_fw.root"
+output_filename = "data_root/ntuple_fw.root"
 outfile         = ROOT.TFile.Open(output_filename, "recreate")
 tree            = ROOT.TTree("physics", "physics")
 branches        = {}
@@ -21,7 +21,7 @@ def main():
     print "input:  %10i events :: %s" % (len(lines), input_filename)
 
     point_mxl    = pow(2.0, -14)
-    point_mxg    = pow(2.0,   0)
+    point_mxg    = pow(2.0, -16)
     point_mug    = pow(2.0,   0)
     point_mvg    = pow(2.0,   0)
     point_dtheta = pow(2.0,   0)

@@ -3,8 +3,8 @@ import rootutils,rootlogon
 import ROOT
 ROOT.gROOT.SetBatch()
 
-filename_sw = "ntuple_sw.root"
-filename_fw = "ntuple_fw.root"
+filename_sw = "data_root/ntuple_sw.root"
+filename_fw = "data_root/ntuple_fw.root"
 
 file_sw = ROOT.TFile.Open(filename_sw)
 file_fw = ROOT.TFile.Open(filename_fw)
@@ -19,7 +19,8 @@ offset  = [65, 65,  73,  73,  73,  73, 65, 65] if station==1 else [68, 68, 110, 
 def main():
 
     hists = {}
-    hists["delta_mxl"] = ROOT.TH1F("delta_mxl", ";#Deltam_{X}^{local}(FW - SW);Events", 100, -0.01, 0.01)
+    hists["delta_mxl"] = ROOT.TH1F("delta_mxl", ";#Deltam_{X}^{local }(FW #font[122]{-} SW);Events", 100, -0.01, 0.01)
+    hists["delta_mxg"] = ROOT.TH1F("delta_mxg", ";#Deltam_{X}^{global}(FW #font[122]{-} SW);Events", 100, -0.01, 0.01)
 
     for hist in hists.values():
         hist.Sumw2()
@@ -27,7 +28,7 @@ def main():
         hist.SetLineColor(ROOT.kBlack)
         hist.SetLineWidth(2)
 
-    entries_sw = 1000 # tree_sw.GetEntries()
+    entries_sw = tree_sw.GetEntries()
     entries_fw = tree_fw.GetEntries()
 
     bcid_sw_prev    = 0
@@ -57,12 +58,15 @@ def main():
             muons += 1
 
         mxl_sw    = tree_sw.mxl
+        mxg_sw    = tree_sw.my
         bcid_sw   = mode([bcid % 4096 for bcid in tree_sw.hit_bcid])
         if bcid_was_reset(bcid_sw, bcid_sw_prev):
             counter_sw_4096 += 1
         bcid_sw_prev = bcid_sw
 
+        matches    = 0
         delta_mxls = []
+        delta_mxgs = []
 
         bcid_fw_prev    = 0
         counter_fw_4096 = 0
@@ -72,6 +76,7 @@ def main():
             tree_fw.GetEntry(ent_fw)
 
             mxl_fw  = tree_fw.trig_mxl
+            mxg_fw  = tree_fw.trig_mxg
             bcid_fw = tree_fw.trig_bcid
 
             if bcid_was_reset(bcid_fw, bcid_fw_prev):
@@ -84,32 +89,40 @@ def main():
                 break
 
             if bcid_match(bcid_sw, bcid_fw) and counter_sw_4096==counter_fw_4096:
-                delta_mxls.append(mxl_fw - mxl_sw)
+                matches += 1
+                delta_mxls.append(mxl_fw            - mxl_sw)
+                delta_mxgs.append(mxg_fw/pow(2, 16) - mxg_sw)
 
-
-        if len(delta_mxls) > 0:
+        if matches > 0:
             hists["delta_mxl"].Fill(min(delta_mxls))
+            hists["delta_mxg"].Fill(min(delta_mxgs))
         else:
             announce_failure(tree_sw)
             failures += 1
 
         print "%5i   %4i   %2i   %s" % (muons, bcid_sw, counter_sw_4096, len(delta_mxls))
 
-    canvas = ROOT.TCanvas("delta_mxl", "delta_mxl", 800, 800)
-    canvas.Draw()
-    rootutils.show_overflow(hists["delta_mxl"])
-    hists["delta_mxl"].SetMinimum(0)
-    hists["delta_mxl"].Draw("histsame")
 
-    underflow = hists["delta_mxl"].GetBinContent(1)
-    overflow  = hists["delta_mxl"].GetBinContent(hists["delta_mxl"].GetNbinsX())
+    for name in hists:
+        write_plot(name, hists[name], failures, muons)
+
+def write_plot(name, hist, failures, muons):
+
+    canvas = ROOT.TCanvas(name, name, 800, 800)
+    canvas.Draw()
+    rootutils.show_overflow(hist)
+    hist.SetMinimum(0)
+    hist.Draw("histsame")
+
+    underflow = hist.GetBinContent(1)
+    overflow  = hist.GetBinContent(hist.GetNbinsX())
 
     failure_top = ROOT.TLatex(0.70, 0.75, "fit failures")
     failure_bot = ROOT.TLatex(0.70, 0.70, "%i / %i = %.1f%%" % (failures, muons, 100*float(failures)/float(muons)))
-    diagnostic_muons     = ROOT.TLatex(0.90, 0.80,     "muons: %i"           % (muons))
-    diagnostic_failure   = ROOT.TLatex(0.90, 0.75,    "no fit: %3i, %4.1f%%" % (failures,  100*float(failures) /float(muons)))
-    diagnostic_underflow = ROOT.TLatex(0.90, 0.70, "underflow: %3i, %4.1f%%" % (underflow, 100*float(underflow)/float(muons)))
-    diagnostic_overflow  = ROOT.TLatex(0.90, 0.65,  "overflow: %3i, %4.1f%%" % (overflow,  100*float(overflow) /float(muons)))
+    diagnostic_muons     = ROOT.TLatex(0.90, 0.80, "input muons: %i"           % (muons))
+    diagnostic_failure   = ROOT.TLatex(0.90, 0.75,      "no fit: %3i, %4.1f%%" % (failures,  100*float(failures) /float(muons)))
+    diagnostic_underflow = ROOT.TLatex(0.90, 0.70,   "underflow: %3i, %4.1f%%" % (underflow, 100*float(underflow)/float(muons)))
+    diagnostic_overflow  = ROOT.TLatex(0.90, 0.65,    "overflow: %3i, %4.1f%%" % (overflow,  100*float(overflow) /float(muons)))
 
     for logo in [diagnostic_muons, diagnostic_failure, diagnostic_underflow, diagnostic_overflow]:
         logo.SetNDC()
@@ -118,7 +131,7 @@ def main():
         logo.SetTextFont(82)
         logo.Draw()
 
-    hists["delta_mxl"].SetMinimum(0.3)
+    hist.SetMinimum(0.3)
     ROOT.gPad.SetLogy()
     
     canvas.SaveAs(canvas.GetName()+".pdf")

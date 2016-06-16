@@ -2,10 +2,10 @@ import array
 import sys
 import ROOT
 
-input_filename = "mmt_hit_print_h0.0009_ctx2_ctuv1_uverr0.0035_setxxuvuvxx_ql1_qdlm1_qbg0_qt0_NOM_NOMPt100GeV.digi.ntuple.txt"
+input_filename = "data_text/mmt_hit_print_h0.0009_ctx2_ctuv1_uverr0.0035_setxxuvuvxx_ql1_qdlm1_qbg0_qt0_NOM_NOMPt100GeV.digi.ntuple.txt"
 lines = open(input_filename).readlines()
 
-output_filename = "ntuple_sw.root"
+output_filename = "data_root/ntuple_sw.root"
 outfile         = ROOT.TFile.Open(output_filename, "recreate")
 tree            = ROOT.TTree("physics", "physics")
 branches        = {}
