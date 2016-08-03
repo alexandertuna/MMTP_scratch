@@ -10,8 +10,14 @@ outfile         = ROOT.TFile.Open(output_filename, "recreate")
 tree            = ROOT.TTree("physics", "physics")
 branches        = {}
 
+planes = {}
+planes["x"] = [0, 1, 6, 7]
+planes["u"] = [2, 4]
+planes["v"] = [3, 5]
+
 floats = ["true_theta", "true_phi", "true_dtheta",
           "mx", "my", "mxl", "theta", "phi", "dtheta",
+          "mxg", "mug", "mvg",
           "hit_n", "event"]
 vectors = ["hit_time", "hit_vmm", "hit_plane", "hit_station",
            "hit_strip", "hit_slope", "hit_bcid"]
@@ -76,6 +82,11 @@ def write_to_tree(event_lines, bcid):
     event = header_firstword.replace("%Ev", "")
     branches["event"][0] = float(event)
 
+    slopes = {}
+    slopes["x"] = []
+    slopes["u"] = []
+    slopes["v"] = []
+
     for line in hits:
         line = ", ".join(line.split())
         time, vmm, plane, station, strip, slope = eval(line)
@@ -87,6 +98,9 @@ def write_to_tree(event_lines, bcid):
         branches["hit_strip"  ].push_back(strip)
         branches["hit_slope"  ].push_back(slope)
         branches["hit_bcid"   ].push_back(bcid + hit_bcid)
+        for pl in ["x", "u", "v"]:
+            if plane in planes[pl]: 
+                slopes[pl].append(slope)
 
     footer = footer.strip("-")
     footer = footer.split("=")[-1]
@@ -98,6 +112,9 @@ def write_to_tree(event_lines, bcid):
     branches["mx"         ][0] = mx
     branches["my"         ][0] = my
     branches["mxl"        ][0] = mxl
+    branches["mxg"        ][0] = average(slopes["x"])
+    branches["mug"        ][0] = average(slopes["u"])
+    branches["mvg"        ][0] = average(slopes["v"])
     branches["theta"      ][0] = theta
     branches["phi"        ][0] = phi
     branches["dtheta"     ][0] = dtheta
@@ -130,6 +147,11 @@ def bases(lines, coord, position):
         if coord+" BASES" in line:
             bases_line = lines[index + position + 1]
             return bases_line.strip().split()
+
+def average(li):
+    if not li: 
+        return 0
+    return sum(li) / float(len(li))
 
 def fatal(message):
     sys.exit("Error in %s: %s" % (__file__, message))
