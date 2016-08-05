@@ -11,9 +11,11 @@ import argparse
 import math
 import os
 import sys
-import rootutils,rootlogon
+
 import ROOT
 ROOT.gROOT.SetBatch()
+ROOT.PyConfig.IgnoreCommandLineOptions = True
+import rootutils,rootlogon
 
 # some hard-coded global constants for now
 region  = 6
@@ -190,6 +192,9 @@ def main():
     for name in hists:
         write_plot(name, hists[name], failures, muons)
 
+#
+# turn histograms into pdfs
+#
 def write_plot(name, hist, failures, muons):
 
     ops = options()
@@ -249,7 +254,7 @@ def write_plot(name, hist, failures, muons):
 # command line options for input and output
 #
 def options():
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(usage=__doc__, formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument("--software", default="data_root/ntuple_sw.root", help="input ROOT file from the software simulation")
     parser.add_argument("--firmware", default="data_root/ntuple_fw.root", help="input ROOT file from the firmware simulation")
     parser.add_argument("--output",   default="data_plot/",               help="output directory for plots")

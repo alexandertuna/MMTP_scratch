@@ -13,8 +13,10 @@ import array
 import math
 import os
 import sys
-import ROOT, rootutils
 
+import ROOT
+ROOT.PyConfig.IgnoreCommandLineOptions = True
+import rootutils
 
 #
 # output variables of the TTree
@@ -100,7 +102,7 @@ def main():
 # command line options for input and output
 #
 def options():
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(usage=__doc__, formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument("--input",  default=None,                       help="input text file from the firmware simulation")
     parser.add_argument("--output", default="data_root/ntuple_fw.root", help="output root file")
     parser.add_argument("--force",  action="store_true",                help="overwrite the output root file, as desired")
