@@ -28,7 +28,8 @@ def main(quantity):
     if not quantity:
         fatal("Please give a --quantity to plot on the wedge")
     if not quantity in available_quantities():
-        fatal("The script is not configured to plot %s. Would you like to add it?" % (quantity))
+        blob = "Available quantities are: \n %s" % ("\n ".join(available_quantities()))
+        fatal("The script is not configured to plot %s. Would you like to add it?\n\n%s" % (quantity, blob))
     if not ops.sector.lower() in ["large", "small"]:
         fatal("Please give a --sector which is large or small")
 
@@ -165,7 +166,7 @@ def options():
 
 def fatal(message):
     import sys
-    sys.exit("Error in %s: %s" % (__file__, message))
+    sys.exit("\nError in %s: %s\n" % (__file__, message))
 
 
 if __name__ == "__main__":
