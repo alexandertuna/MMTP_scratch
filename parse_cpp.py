@@ -1,20 +1,23 @@
+"""
+parse_cpp.py :: a script for taking the MMTP SW output (text file)
+                and converting it to a ROOT TTree for analysis.
+                one trigger in the input text file corresponds to 
+                one entry in the output ROOT TTree.
+
+run like:
+> python parse_cpp.py --input=path/to/results_sw.txt --output=path/to/ntuple_sw.root
+"""
+
+import argparse
 import array
+import os
 import sys
 import ROOT
+ROOT.PyConfig.IgnoreCommandLineOptions = True
 
-input_filename = "data_text/mmt_hit_print_h0.0009_ctx2_ctuv1_uverr0.0035_setxxuvuvxx_ql1_qdlm1_qbg0_qt0_NOM_NOMPt100GeV.digi.ntuple.txt"
-lines = open(input_filename).readlines()
-
-output_filename = "data_root/ntuple_sw.root"
-outfile         = ROOT.TFile.Open(output_filename, "recreate")
-tree            = ROOT.TTree("physics", "physics")
-branches        = {}
-
-planes = {}
-planes["x"] = [0, 1, 6, 7]
-planes["u"] = [2, 4]
-planes["v"] = [3, 5]
-
+#
+# output variables of the TTree
+#
 floats = ["true_theta", "true_phi", "true_dtheta",
           "mx", "my", "mxl", "theta", "phi", "dtheta",
           "mxg", "mug", "mvg",
@@ -22,12 +25,29 @@ floats = ["true_theta", "true_phi", "true_dtheta",
 vectors = ["hit_time", "hit_vmm", "hit_plane", "hit_station",
            "hit_strip", "hit_slope", "hit_bcid"]
 
+#
+# main steering function
+#
 def main():
 
-    initialize_branches()
+    ops = options()
 
+    # retrieving input text file
+    if not ops.input:
+        fatal("Please provide an --input text file for parsing.")
+    if not os.path.isfile(ops.input): 
+        fatal("Could not find --input text file %s" % ops.input)
+    lines = open(ops.input).readlines()
     print 
-    print "input:  %10i events :: %s" % (len(filter(lambda line: "%Ev" in line, lines)), input_filename)
+    print "input:  %10i events :: %s" % (len(filter(lambda line: "%Ev" in line, lines)), ops.input)
+
+    # initializing output root file and tree
+    if os.path.isfile(ops.output) and not ops.force==True:
+        fatal("Output ROOT file already exists. Please use --force to overwrite it.")
+    outfile         = ROOT.TFile.Open(ops.output, "recreate")
+    tree            = ROOT.TTree("physics", "physics")
+    branches        = {}
+    initialize_branches(tree, branches)
 
     pitch      = 0.445
     bcid       = 20
@@ -59,17 +79,17 @@ def main():
         if has_summary:
             event_lines = lines[index : index+nlines]
             event_lines = [li.strip() for li in event_lines]
-            write_to_tree(event_lines, bcid)
+            write_to_tree(event_lines, bcid, tree, branches)
 
         bcid += bcid_delta
 
-    print "output: %10i events :: %s" % (tree.GetEntries(), output_filename)
+    print "output: %10i events :: %s" % (tree.GetEntries(), ops.output)
     print 
 
     tree.GetCurrentFile().Write()
     tree.GetCurrentFile().Close()
 
-def write_to_tree(event_lines, bcid):
+def write_to_tree(event_lines, bcid, tree, branches):
 
     if len(event_lines) < 2:
         fatal("All events should have at least two lines!\n %s" % event_lines)
@@ -81,6 +101,11 @@ def write_to_tree(event_lines, bcid):
     header_firstword = header.split()[0]
     event = header_firstword.replace("%Ev", "")
     branches["event"][0] = float(event)
+
+    planes = {}
+    planes["x"] = [0, 1, 6, 7]
+    planes["u"] = [2, 4]
+    planes["v"] = [3, 5]
 
     slopes = {}
     slopes["x"] = []
@@ -121,9 +146,16 @@ def write_to_tree(event_lines, bcid):
     branches["hit_n"      ][0] = len(hits)
 
     tree.Fill()
-    reset_branches()
+    reset_branches(branches)
 
-def initialize_branches():
+def options():
+    parser = argparse.ArgumentParser(usage=__doc__, formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser.add_argument("--input",  default=None,                       help="input text file from the software simulation")
+    parser.add_argument("--output", default="data_root/ntuple_sw.root", help="output root file")
+    parser.add_argument("--force",  action="store_true",                help="overwrite the output root file, as desired")
+    return parser.parse_args()
+
+def initialize_branches(tree, branches):
     for var in floats:
         branches[var] = array.array("f", [0.0])
         tree.Branch(var, branches[var], "%s/%s" % (var, "F"))
@@ -132,7 +164,7 @@ def initialize_branches():
         branches[var].clear()
         tree.Branch(var, branches[var])
 
-def reset_branches():
+def reset_branches(branches):
     for var in floats:
         branches[var][0] = 0
     for var in vectors:
