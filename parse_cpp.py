@@ -37,6 +37,30 @@ def main():
         fatal("Please provide an --input text file for parsing.")
     if not os.path.isfile(ops.input): 
         fatal("Could not find --input text file %s" % ops.input)
+
+    # Parse input event list
+    if not ops.events:
+        print
+        print "No events selected, doing all of them..."
+        selectEvents = False
+    else:
+        print
+        print "Selecting specified events..."
+        selectEvents = True
+        desiredEvents=[]
+        eventList = ops.events[0].split(",")
+        for event in eventList:
+            if "-" in event:
+                split = event.split("-")
+                rng = [int(i) for i in split]
+                a = [i for i in range(rng[0], rng[1])]
+                desiredEvents = desiredEvents + a
+            else:
+                desiredEvents.append(int(event))
+        maxDesired = max(desiredEvents)
+        print "Largest desired event number: %i" % maxDesired
+
+    # open input file and get going
     lines = open(ops.input).readlines()
     print 
     print "input:  %10i events :: %s" % (len(filter(lambda line: "%Ev" in line, lines)), ops.input)
@@ -79,7 +103,23 @@ def main():
         if has_summary:
             event_lines = lines[index : index+nlines]
             event_lines = [li.strip() for li in event_lines]
+
+
+            # check event against desiredEvent list
+            if selectEvents:
+                # redundant for now, but oh well
+                eventNum = int(event_lines[0].split()[0].replace("%Ev", ""))
+                if eventNum not in desiredEvents:
+                    if eventNum > maxDesired:
+                        print "Passed maximum desired event number..."
+                        break
+                    continue
+
             write_to_tree(event_lines, bcid, tree, branches)
+
+        # ensure we don't increment bcid for uninteresting events
+        else:
+            continue
 
         bcid += bcid_delta
 
@@ -150,8 +190,9 @@ def write_to_tree(event_lines, bcid, tree, branches):
 
 def options():
     parser = argparse.ArgumentParser(usage=__doc__, formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument("--input",  default=None,                       help="input text file from the software simulation")
+    parser.add_argument("--input", default="../../data/stephen/mmt_hit_print_h0.0009_ctx2_ctuv1_uverr0.0035_setxxuvuvxx_ql1_qdlm1_qbg0_qt0_NOM_NOMPt100GeV.digi.ntuple.txt", help="input text file from the software simulation")
     parser.add_argument("--output", default="data_root/ntuple_sw.root", help="output root file")
+    parser.add_argument("--events", default=None, nargs='+', help="tuple of desired event numbers")
     parser.add_argument("--force",  action="store_true",                help="overwrite the output root file, as desired")
     return parser.parse_args()
 
