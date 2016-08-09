@@ -5,7 +5,7 @@ parse_cpp.py :: a script for taking the MMTP SW output (text file)
                 one entry in the output ROOT TTree.
 
 run like:
-> python parse_cpp.py --input=path/to/results_sw.txt --output=path/to/ntuple_sw.root
+> python parse_cpp.py --input=path/to/results_sw.txt --output=path/to/ntuple_sw.root --events=list,of,events,or-ranges
 """
 
 import argparse
