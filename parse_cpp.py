@@ -13,6 +13,11 @@ import array
 import os
 import sys
 import ROOT
+
+# ughhhhhhhhh
+sys.path.append('../../noah')
+import parseAndProcess as pap
+
 ROOT.PyConfig.IgnoreCommandLineOptions = True
 
 #
@@ -60,6 +65,21 @@ def main():
         maxDesired = max(desiredEvents)
         print "Largest desired event number: %i" % maxDesired
 
+    # Region Selection
+    if not ops.region:
+        print
+        print "No region selected, doing all of them..."
+    else:
+        if selectEvents:
+            fatal("Please only specify events or a region, my head hurts...")
+        print 
+        print "Selecting events from specified region..."
+        region = eval(ops.region[0])
+        print region 
+        desiredEvents = pap.findEventsInRegion(region, hitsPath='../../data/stephen/testHits.npy', numEvents='10')
+        maxDesired = max(desiredEvents)
+        selectEvents = True
+
     # open input file and get going
     lines = open(ops.input).readlines()
     print 
@@ -103,7 +123,6 @@ def main():
         if has_summary:
             event_lines = lines[index : index+nlines]
             event_lines = [li.strip() for li in event_lines]
-
 
             # check event against desiredEvent list
             if selectEvents:
@@ -193,6 +212,7 @@ def options():
     parser.add_argument("--input", default="../../data/stephen/mmt_hit_print_h0.0009_ctx2_ctuv1_uverr0.0035_setxxuvuvxx_ql1_qdlm1_qbg0_qt0_NOM_NOMPt100GeV.digi.ntuple.txt", help="input text file from the software simulation")
     parser.add_argument("--output", default="data_root/ntuple_sw.root", help="output root file")
     parser.add_argument("--events", default=None, nargs='+', help="tuple of desired event numbers")
+    parser.add_argument("--region", default=None, help='desired region/layer number')
     parser.add_argument("--force",  action="store_true",                help="overwrite the output root file, as desired")
     return parser.parse_args()
 
