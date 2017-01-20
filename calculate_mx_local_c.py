@@ -3,9 +3,13 @@ calculate the constants C_i for mx_local
 
 mx_local = sum( C_i * y_i )
 """
+import geometry
 from rootutils import int2sfi
 
 def main():
+
+    print geometry.strip_pitch("L")
+    print geometry.strip_pitch("S")
 
     #              3       2       1       0
     zbases      = [7763.5, 7752.5, 7594.5, 7583.5]
