@@ -11,6 +11,7 @@ import argparse
 import math
 import os
 import sys
+import time
 
 import ROOT
 ROOT.gROOT.SetBatch()
@@ -48,13 +49,13 @@ def main():
 
     # book histograms
     hists = {}
-    hists["delta_mxl"]   = ROOT.TH1F("delta_mxl",   ";#Deltam_{X}^{local }(FW #font[122]{-} SW);Events", 100, -0.01, 0.01)
-    hists["delta_mxg"]   = ROOT.TH1F("delta_mxg",   ";#Deltam_{X}^{global}(FW #font[122]{-} SW);Events", 100, -0.01, 0.01)
-    hists["delta_mug"]   = ROOT.TH1F("delta_mug",   ";#Deltam_{U}^{global}(FW #font[122]{-} SW);Events", 100, -0.01, 0.01)
-    hists["delta_mvg"]   = ROOT.TH1F("delta_mvg",   ";#Deltam_{V}^{global}(FW #font[122]{-} SW);Events", 100, -0.01, 0.01)
-    hists["delta_dth"]   = ROOT.TH1F("delta_dth",   ";#Delta(#Delta#theta)(FW #font[122]{-} SW);Events", 100, -0.01, 0.01)
-    hists["delta_phi"]   = ROOT.TH1F("delta_phi",   ";#Delta#phi(FW #font[122]{-} SW);Events",           100, -0.01, 0.01)
-    hists["delta_theta"] = ROOT.TH1F("delta_theta", ";#Delta#theta(FW #font[122]{-} SW);Events",         100, -0.01, 0.01)
+    hists["delta_mxl"]   = ROOT.TH1F("delta_mxl",   ";m_{X}^{local,  FW} #font[122]{-} m_{X}^{local,  SW};Events", 100, -0.01, 0.01)
+    hists["delta_mxg"]   = ROOT.TH1F("delta_mxg",   ";m_{X}^{global, FW} #font[122]{-} m_{X}^{global, SW};Events", 100, -0.01, 0.01)
+    hists["delta_mug"]   = ROOT.TH1F("delta_mug",   ";m_{U}^{global, FW} #font[122]{-} m_{U}^{global, SW};Events", 100, -0.01, 0.01)
+    hists["delta_mvg"]   = ROOT.TH1F("delta_mvg",   ";m_{V}^{global, FW} #font[122]{-} m_{V}^{global, SW};Events", 100, -0.01, 0.01)
+    hists["delta_dth"]   = ROOT.TH1F("delta_dth",   ";#Delta#theta^{FW} #font[122]{-} #Delta#theta^{SW} ;Events",  100, -0.01, 0.01)
+    hists["delta_phi"]   = ROOT.TH1F("delta_phi",   ";#phi^{FW} #font[122]{-} #phi^{SW};Events",                   100, -0.01, 0.01)
+    hists["delta_theta"] = ROOT.TH1F("delta_theta", ";#theta^{FW} #font[122]{-} #theta^{SW};Events",               100, -0.01, 0.01)
     for hist in hists.values():
         hist.Sumw2()
         hist.GetXaxis().SetNdivisions(505)
@@ -68,6 +69,7 @@ def main():
     # start counting from zero
     sw["bcid_prev"] = 0
     counter_sw_4096 = 0
+    start_time = time.time()
 
     muons    = 0
     failures = 0
@@ -76,6 +78,10 @@ def main():
     for ent_sw in xrange(entries_sw):
 
         tree_sw.GetEntry(ent_sw)
+
+        # progress bar
+        if ops.progress and ent_sw > 0 and ent_sw % 1000 == 0:
+            rootutils.progress(time.time() - start_time, ent_sw, entries_sw)
 
         # no hits: skip it
         if tree_sw.hit_n == 0:
@@ -105,7 +111,7 @@ def main():
         sw["phi"]    = tree_sw.phi
         sw["theta"]  = tree_sw.true_theta
         sw["bcid"]   = mode([bcid % 4096 for bcid in tree_sw.hit_bcid])
-        if bcid_was_reset(sw["bcid"], sw["bcid_prev"]):
+        if bcid_was_reset(sw["bcid"], sw["bcid_prev"], ops.verbose):
             counter_sw_4096 += 1
         sw["bcid_prev"] = sw["bcid"]
 
@@ -139,7 +145,7 @@ def main():
             fw["phi"]    = math.atan(tree_fw.trig_tanphi)
             fw["theta"]  = math.atan(tree_fw.trig_tantheta)
 
-            if bcid_was_reset(fw["bcid"], fw["bcid_prev"]):
+            if bcid_was_reset(fw["bcid"], fw["bcid_prev"], ops.verbose):
                 counter_fw_4096 += 1
             fw["bcid_prev"] = fw["bcid"]
 
@@ -189,8 +195,11 @@ def main():
 
 
     # write the plots with common style
+    print
+    print
     for name in hists:
         write_plot(name, hists[name], failures, muons)
+
 
 #
 # turn histograms into pdfs
@@ -258,6 +267,8 @@ def options():
     parser.add_argument("--software", default="data_root/ntuple_sw.root", help="input ROOT file from the software simulation")
     parser.add_argument("--firmware", default="data_root/ntuple_fw.root", help="input ROOT file from the firmware simulation")
     parser.add_argument("--output",   default="data_plot/",               help="output directory for plots")
+    parser.add_argument("--progress", action="store_true",                help="turn on a progress bar")
+    parser.add_argument("--verbose",  action="store_true",                help="turn on verbose mode")
     return parser.parse_args()
 
 
@@ -272,8 +283,11 @@ def mode(li):
 # did the BCID counter reset?
 # NB: BCIDs need to otherwise be in order
 #
-def bcid_was_reset(bcid, bcid_prev):
-    return bcid < bcid_prev
+def bcid_was_reset(bcid, bcid_prev, verbose=False):
+    was_reset = bcid < bcid_prev - 1
+    if was_reset and verbose:
+        print "BCID was reset: %5i -> %5i" % (bcid_prev, bcid)
+    return was_reset
 
 
 #
