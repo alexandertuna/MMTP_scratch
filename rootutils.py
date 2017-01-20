@@ -1,4 +1,5 @@
 import math
+import sys
 import ROOT
 
 def show_overflow(hist):
@@ -80,4 +81,13 @@ def twos_complement(val, bits):
     if (val & (1 << (bits - 1))) != 0: # if sign bit is set e.g., 8bit: 128-255
         val = val - (1 << bits)        # compute negative value
     return val                         # return positive value as is
+
+def progress(time_diff, nprocessed, ntotal):
+    nprocessed = float(nprocessed)
+    ntotal     = float(ntotal)
+    rate = (nprocessed+1)/time_diff
+    sys.stdout.write("\r > %6i / %6i | %2i%% | %8.2fHz | %6.1fm elapsed | %6.1fm remaining" % (nprocessed, ntotal,
+                                                                                               100*nprocessed/ntotal, rate,
+                                                                                               time_diff/60, (ntotal-nprocessed)/(rate*60)))
+    sys.stdout.flush()
 
